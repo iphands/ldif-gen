@@ -3,9 +3,13 @@
 #include <time.h>
 #include <string.h>
 
+//#define MAX_LINE_SIZE 100;
+
 char * get_randline(char ** strarray, char * line);
 char ** load_array(char * filePath, char ** strarray);
 unsigned short int free_array(char ** strarray);
+
+unsigned short int MAX_LINE_SIZE = 25;
 
 int main()
 {
@@ -15,42 +19,38 @@ int main()
   unsigned int seed = (unsigned int)time(NULL);
   srand(seed);
 
-
   // initialize string storage, and pass to get_randline
-  char line[25];
-
-  /*
-    char firstName[25], lastName[25], city[25], state[4];
-
-    for (unsigned short int i = 0; i < 10; i++) {
-    strncpy(lastName, get_randline("./lists/last_names", line), 25);
-    strncpy(firstName, get_randline("./lists/first_names", line), 25);
-    strncpy(city, get_randline("./lists/cities", line), 25);
-    strncpy(state, get_randline("./lists/states", line), 4);
-  
-
-    // test
-    printf("Random person: %s %s from %s, %s\n", firstName, lastName, city, state);    
-    }
-  */
-
+  char line[MAX_LINE_SIZE] ;
   char ** fname_array = NULL;
   char ** lname_array = NULL;
   char ** city_array = NULL;
   char ** state_array = NULL;
-  //fname_array = load_array("./lists/first_names", fname_array);
-  //lname_array = load_array("./lists/last_names", lname_array);
-  //city_array = load_array("./lists/cities", city_array);
+
+  // load files into arrays
+  fname_array = load_array("./lists/first_names", fname_array);
+  lname_array = load_array("./lists/last_names", lname_array);
+  city_array = load_array("./lists/cities", city_array);
   state_array = load_array("./lists/states", state_array);
-  for (unsigned int i = 0; i < 100000; i++)
-    {
-      //printf("frand: %s\n", get_randline(fname_array, line));
-      //printf("lrand: %s\n", get_randline(lname_array, line));
-      //printf("crand: %s\n", get_randline(city_array, line));
-      printf("srand: %s\n\n", get_randline(state_array, line));
-    }
-  printf("size: %d\n", free_array(fname_array));
+
   
+  // DEBUG
+  for (unsigned int i = 0; i < 1000000; i++)
+    {
+      printf("it: %d\n", i);
+      printf("frand: %s\n", get_randline(fname_array, line));
+      printf("lrand: %s\n", get_randline(lname_array, line));
+      printf("crand: %s\n", get_randline(city_array, line));
+      printf("srand: %s\n", get_randline(state_array, line));
+      printf("\n");
+    }
+
+
+  // Cleanup
+  printf("size: %d\n", free_array(fname_array));
+  printf("size: %d\n", free_array(lname_array));
+  printf("size: %d\n", free_array(city_array));
+  printf("size: %d\n", free_array(state_array));
+
   return(0);
 }
 
@@ -81,10 +81,10 @@ char ** load_array(char * filePath, char ** strarray)
 
   // init vars
   int strcount = 0;
-  char line[25];
+  char line[MAX_LINE_SIZE];
 
   // loop through file, reallocate ram for each line we find
-  while((fgets(line, 25, file)) != NULL)
+  while((fgets(line, MAX_LINE_SIZE, file)) != NULL)
     {
       strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char *));
       strarray[strcount++] = strdup(line);
@@ -93,6 +93,8 @@ char ** load_array(char * filePath, char ** strarray)
   
   // close file, and return array
   fclose(file);
+  strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char*));
+  strarray[strcount] = NULL;
   return(strarray);
 }
 
@@ -100,7 +102,7 @@ char * get_randline(char ** strarray, char * line)
 {
   // Count array length
   unsigned short int i = 0;
-  while (strarray[i])
+  while (strarray[i][0] != NULL)
     {
       i++;
     }
@@ -108,11 +110,15 @@ char * get_randline(char ** strarray, char * line)
   // Generate a random number 0 - i (file length)
   unsigned int choice = (rand() % (i - 1));
 
+  // Get size of line
+  const unsigned short int line_len = strlen(strarray[choice]);
+
   // Set line to a random element in array
-  line = strncpy(line, strarray[choice], 25);
+  line = strncpy(line, line_len);
 
   // Strip newline char
-  int x = strnlen(line, 25) - 1;
+  int x = strnlen(line, line_len);
+  x--;
   if ((line[x] == '\n') || (line[x] == ' '))
     line[x] = '\0';
 
