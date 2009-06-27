@@ -49,21 +49,13 @@ int main()
     {
       //printf("it: %d\n", i);
       
-      char * frand = NULL;
-      char * lrand = NULL;
-      char * crand = NULL;
-      char * srand = NULL;
-      char * uname = NULL;
-      char * shell = NULL;
-      char * empt = NULL;
-
-      frand = (char*)strndup(get_randline(fname_array, line, fname_array_len), 25);
-      lrand = (char*)strndup(get_randline(lname_array, line, lname_array_len), 25);
-      crand = (char*)strndup(get_randline(city_array, line, city_array_len) ,25);
-      srand = (char*)strndup(get_randline(state_array, line, state_array_len), 25);
-      uname = (char*)make_username(frand, lrand);
-      shell = (char*)strndup(get_randline(shell_array, line, shell_array_len), 25);
-      empt = (char*)strndup(get_randline(empt_array, line, empt_array_len), 25);
+      char * frand = (char*)strndup(get_randline(fname_array, line, fname_array_len), 25);
+      char * lrand = (char*)strndup(get_randline(lname_array, line, lname_array_len), 25);
+      char * crand = (char*)strndup(get_randline(city_array, line, city_array_len) ,25);
+      char * srand = (char*)strndup(get_randline(state_array, line, state_array_len), 25);
+      char * uname = (char*)make_username(frand, lrand);
+      char * shell = (char*)strndup(get_randline(shell_array, line, shell_array_len), 25);
+      char * empt = (char*)strndup(get_randline(empt_array, line, empt_array_len), 25);
       char * phnnum = make_phonenum();
 
       printf("dn: uid=%s,ou=People,dc=example,dc=com\n", uname);
