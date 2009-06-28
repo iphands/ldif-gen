@@ -4,6 +4,7 @@
 #include <ctype.h>
 //#define _GNU_SOURCE
 #include <string.h>
+#include <strings.h>
 
 
 //#define MAX_LINE_SIZE 100;
@@ -13,8 +14,11 @@ unsigned short int load_array(char * filePath, char *** strarray);
 unsigned short int free_array(char ** strarray, unsigned short int len);
 char * make_username(char * fname, char * lname);
 char * make_phonenum();
+char * make_street_addr(char * street, unsigned short int len);
+char * make_postal();
+char * make_employee_num();
 
-unsigned short int MAX_LINE_SIZE = 30;
+unsigned short int MAX_LINE_SIZE = 100;
 
 int main()
 {
@@ -32,8 +36,9 @@ int main()
   char ** state_array = NULL;
   char ** shell_array = NULL;
   char ** empt_array = NULL;
+  char ** street_array = NULL;
 
-  unsigned short int fname_array_len, lname_array_len, city_array_len, state_array_len, shell_array_len, empt_array_len = 0;
+  unsigned short int fname_array_len, lname_array_len, city_array_len, state_array_len, shell_array_len, empt_array_len, street_array_len = 0;
 
   // Load files into arrays
   fname_array_len = load_array("./lists/first_names", &fname_array);
@@ -42,21 +47,34 @@ int main()
   state_array_len = load_array("./lists/states", &state_array);
   shell_array_len = load_array("./lists/shells", &shell_array);
   empt_array_len = load_array("./lists/employee_types", &empt_array);
-
+  street_array_len = load_array("./lists/streets", &street_array);
   
+  unsigned int guid = 20000;
+
   // DEBUG
-  for (unsigned int i = 0; i < 100; i++)
+  for (unsigned int i = 0; i < 1000000; i++)
     {
       //printf("it: %d\n", i);
       
       char * frand = (char*)strndup(get_randline(fname_array, line, fname_array_len), 25);
       char * lrand = (char*)strndup(get_randline(lname_array, line, lname_array_len), 25);
       char * crand = (char*)strndup(get_randline(city_array, line, city_array_len) ,25);
-      char * srand = (char*)strndup(get_randline(state_array, line, state_array_len), 25);
+      char * srand = (char*)strndup(get_randline(state_array, line, state_array_len), 4);
       char * uname = (char*)make_username(frand, lrand);
       char * shell = (char*)strndup(get_randline(shell_array, line, shell_array_len), 25);
       char * empt = (char*)strndup(get_randline(empt_array, line, empt_array_len), 25);
       char * phnnum = make_phonenum();
+
+      //char * street = (char*)strndup(get_randline(street_array, line, street_array_len), street_array_len + 6);
+      //printf("street: %s\n", make_street_addr(street, (strnlen(street, 100) + 600 + 1)));
+
+      char * street_name = (char*)strndup(get_randline(street_array, line, street_array_len), street_array_len + 6);
+      char * street_addr = make_street_addr(street_name, (strnlen(street_name, 100) + 600 + 1));            
+      char * postal_code = make_postal();
+      char * empl_num = make_employee_num();
+      char * mobile_phnnum = make_phonenum();
+      char * pager_num = make_phonenum();
+
 
       printf("dn: uid=%s,ou=People,dc=example,dc=com\n", uname);
       printf("objectclass: person\n");
@@ -64,40 +82,43 @@ int main()
       //userPassword:
       printf("telephoneNumber: %s\n", phnnum);
       //description:
-      //objectclass: organizationalPerson
-      //facsimileTelephoneNumber: 048 265 5944
-      //street: 6745 Porter Alley
-      //postOfficeBox: 9868
-      //postalCode: 30905-7182
-      //ou: Global Learning Services
+      printf("objectclass: organizationalPerson\n");
+      printf("facsimileTelephoneNumber: %s\n", mobile_phnnum);
+      printf("street: %s\n", street_addr);
+      printf("postOfficeBox: %d\n", (rand() % 899999) + 100000);
+      printf("postalCode: %s\n", postal_code);
+      printf("ou: Global Learning Services\n");
       printf("st: %s\n", srand);
-      //l: Paterson
-      //objectclass: inetOrgPerson
-      //employeeNumber: 613-19-6955
+      printf("l: %s\n", crand);
+      printf("objectclass: inetOrgPerson\n");
+      printf("employeeNumber: %s\n", empl_num);
       printf("employeeType: %s\n", empt);
       printf("givenName: %s\n", frand);
       printf("homePhone: %s\n", phnnum);
-      //homePostalAddress: 2381 Hightower Road $ Downey, RI 78307-9416
+      printf("homePostalAddress: %s $ %s, %s %s\n", street_addr, crand, srand, postal_code);
       //jpegPhoto:< file:///home/iphands/prog/python/gen_dit/faces/butterfly.png
-      //mobile: 241 293 9212
-      //pager: 193 622 1437
-      //objectclass: inetOrgPerson
-      //uidNumber: 10000
-      //gidNumber: 10000
+      printf("mobile: %s\n", mobile_phnnum);
+      printf("pager: %s\n", pager_num);
+      printf("objectclass: posixAccount\n");
+      printf("uidNumber: %d\n", guid);
+      printf("gidNumber: %d\n", guid);
+      guid++;
+
       printf("loginShell: %s\n", shell);
-      //objectclass: shadowAccount
-      //shadowLastChange: 14421
-      //shadowMin: 0
-      //shadowMax: 90
-      //shadowWarning: 14
-      //shadowInactive: 0
+      printf("objectclass: shadowAccount\n");
+      printf("shadowLastChange: 14422\n");
+      printf("shadowMin: 0\n");
+      printf("shadowMax: 90\n");
+      printf("shadowWarning: 14\n");
+      printf("shadowInactive: 0\n");
       printf("cn: %s %s\n", frand, lrand);
       printf("uid: %s\n", uname);
       printf("mail: %s@example.com\n", uname);
-      //homeDirectory: /home/j/jaimdhundhara 
+      printf("homeDirectory: /home/%c/%s\n", uname[0], uname);
       
       //printf("name: %s %s\nuid: %s\nphone: %s\nstate: %s\ncity: %s\n\n", frand, lrand, uname, phnnum, crand, srand);
 
+      // Cleanup
       free(phnnum);
       free(frand);
       free(lrand);
@@ -106,28 +127,86 @@ int main()
       free(uname);
       free(shell);
       free(empt);
+      free(street_name);
+      free(street_addr);
+      free(postal_code);
+      free(empl_num);
+      free(mobile_phnnum);
+      free(pager_num);
       printf("\n");
     }
 
 
   // Cleanup
-
-  printf("size: %d\n", free_array(fname_array, fname_array_len));
-  printf("size: %d\n", free_array(lname_array, lname_array_len));
-  printf("size: %d\n", free_array(city_array, city_array_len));
-  printf("size: %d\n", free_array(state_array, state_array_len));
-  printf("size: %d\n", free_array(shell_array, shell_array_len));
-  printf("size: %d\n", free_array(empt_array, empt_array_len));
+  printf("fname size: %d\n", free_array(fname_array, fname_array_len));
+  printf("lname size: %d\n", free_array(lname_array, lname_array_len));
+  printf("city size: %d\n", free_array(city_array, city_array_len));
+  printf("state size: %d\n", free_array(state_array, state_array_len));
+  printf("shell size: %d\n", free_array(shell_array, shell_array_len));
+  printf("empt size: %d\n", free_array(empt_array, empt_array_len));
+  printf("street size: %d\n", free_array(street_array, street_array_len));
 
   return(0);
 }
 
+char * make_postal()
+{
+  /*
+    Example:
+    postalCode: 30905-7182
+  */
+
+  // Make storage
+  char postal_code[11];
+
+  // Build string
+  snprintf(postal_code, 11, "%d-%d", (rand() % 89999) + 10000, (rand() % 8999) + 1000);
+ 
+  // Return formatted postal code
+  return((char*)strndup(postal_code, 11));
+}
+
+char * make_street_addr(char * street, unsigned short int len)
+{
+  /* 
+     Example: 
+     street: 6745 Porter Alley
+  */
+  
+  //printf("\nDEBUG: %d -- %s\n", len, street);
+
+  // Make storage
+  char addr[len + 6];
+
+  // Build string
+  snprintf(addr, (len + 6), "%d %s", (rand() % 18000), street);
+  
+  // Return formatted street address
+  return((char*)strndup(addr, len));
+}
+
 char * make_phonenum()
 {
+  // Make storage
   char phnnum[13];
+
+  // Build string
   snprintf(phnnum, 13, "%d %d %d", (rand() % 690) + 300, (rand() % 899) + 100, (rand() % 8999) + 1000);
-  //printf("(%s) ", phnnum);
-  return(strndup(phnnum, 13));
+
+  // Return formatted phone number
+  return((char*)strndup(phnnum, 13));
+}
+
+char * make_employee_num()
+{
+  // Make storage
+  char emplnum[12];
+
+  // Build string
+  snprintf(emplnum, 12, "%d-%d-%d", (rand() % 690) + 300, (rand() % 89) + 10, (rand() % 8999) + 1000);
+
+  // Return formatted phone number
+  return((char*)strndup(emplnum, 13));
 }
 
 char * make_username(char * pfname, char * plname)
@@ -168,7 +247,7 @@ char * make_username(char * pfname, char * plname)
 
   // Cleanup and return
   free(lname);
-  return(strndup(uname, x));
+  return((char*)strndup(uname, x));
 }
 
 
@@ -183,13 +262,13 @@ unsigned short int free_array(char ** strarray, unsigned short int len)
   free(strarray);
 
   /*
-  unsigned short int i = 0;
-  while (strarray[i])
+    unsigned short int i = 0;
+    while (strarray[i])
     {
-      i++;
-      free(strarray[i]);
+    i++;
+    free(strarray[i]);
     }
-  free(strarray);
+    free(strarray);
   */
 
   return len;
