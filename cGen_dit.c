@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <linux/types.h>
-
+#include <unistd.h>
 
 //#define MAX_LINE_SIZE 100;
 
@@ -21,6 +21,8 @@ char * make_street_addr(char * street, unsigned short int len);
 char * make_postal();
 char * make_employee_num();
 unsigned short int load_dir_array(char * path, char *** pstrarray);
+char * make_passwd();
+char * make_sentence();
 
 unsigned short int MAX_LINE_SIZE = 100;
 
@@ -61,29 +63,10 @@ int main()
   // Test
 
   // DEBUG
-  for (unsigned int i = 0; i < 1000; i++)
+  for (unsigned int i = 0; i < 1000000; i++)
     {
       //printf("it: %d\n", i);
       
-
-      /*
-      char * frand = (char*)strndup(get_randline(fname_array, line, fname_array_len), 25);
-      char * lrand = (char*)strndup(get_randline(lname_array, line, lname_array_len), 25);
-      char * crand = (char*)strndup(get_randline(city_array, line, city_array_len) ,25);
-      char * srand = (char*)strndup(get_randline(state_array, line, state_array_len), 4);
-      char * uname = (char*)make_username(frand, lrand);
-      char * shell = (char*)strndup(get_randline(shell_array, line, shell_array_len), 25);
-      char * empt = (char*)strndup(get_randline(empt_array, line, empt_array_len), 25);
-      char * phnnum = make_phonenum();
-      char * street_name = (char*)strndup(get_randline(street_array, line, street_array_len), street_array_len + 6);
-      char * street_addr = make_street_addr(street_name, (strnlen(street_name, 100) + 6 + 1));            
-      char * postal_code = make_postal();
-      char * empl_num = make_employee_num();
-      char * mobile_phnnum = make_phonenum();
-      char * pager_num = make_phonenum();      
-      char * img = (char*)strndup(get_randline(imgs_array, line, imgs_array_len), 25);
-      */
-
       char * frand = get_randline(fname_array, fname_array_len);
       char * lrand = get_randline(lname_array, lname_array_len);
       char * crand = get_randline(city_array, city_array_len);
@@ -99,14 +82,15 @@ int main()
       char * mobile_phnnum = make_phonenum();
       char * pager_num = make_phonenum();      
       char * img = get_randline(imgs_array, imgs_array_len);
-
+      //char * passwd = make_passwd();
+      char * sentence = make_sentence();
 
       printf("dn: uid=%s,ou=People,dc=example,dc=com\n", uname);
       printf("objectclass: person\n");
       printf("sn: %s\n", lrand);
-      //userPassword:
+      //printf("userPassword: %s\n", passwd);
       printf("telephoneNumber: %s\n", phnnum);
-      //description:
+      printf("description: %s\n", sentence);
       printf("objectclass: organizationalPerson\n");
       printf("facsimileTelephoneNumber: %s\n", mobile_phnnum);
       printf("street: %s\n", street_addr);
@@ -161,6 +145,8 @@ int main()
       free(mobile_phnnum);
       free(pager_num);
       free(img);
+      //free(passwd);
+      free(sentence);
       printf("\n");
     }
 
@@ -178,6 +164,41 @@ int main()
 
 
   return(0);
+}
+
+char * make_sentence()
+{
+  unsigned short int count = (rand() % 10) + 10;
+  unsigned short int sent_len = (count + 2) * 13;
+  char sent[sent_len];
+
+  strcpy(sent, "random_pseudo_sentence");
+
+  for (unsigned int x = 0; x < count; x++)
+    {
+      unsigned short int len = (rand() % 10) + 2;
+      char word[len];
+      for (unsigned int i = 0; i < len; i++)
+        {
+          word[i] = (char)((rand() % 25) + 97);
+        }
+      word[len] = '\0';
+
+      sprintf(sent, "%s %s", sent, word);
+    }
+
+  return(strndup(sent, sent_len));
+}
+
+char * make_passwd()
+{
+  char salt[11];
+  sprintf(salt, "$1$%d", rand() % 9999999 );
+  char * passwd = crypt((char*)"redhat", salt);
+  unsigned short int len = strnlen(passwd, 35);
+
+  //printf("DEBUG: %s\n", passwd);
+  return(strndup(passwd, len));
 }
 
 unsigned short int load_dir_array(char * dirPath, char *** pstrarray)
@@ -381,37 +402,6 @@ unsigned short int load_array(char * filePath, char *** pstrarray)
   // Return the array length
   return(strcount);
 }
-
-/*
-char * get_randline(char ** strarray, char * line, unsigned short int len)
-{
-  // Count array length
-  unsigned short int i = len;
-
-  // Generate a random number 0 - i (file length)
-  unsigned int choice = (rand() % (i - 1));
-
-  // Get size of line
-  const unsigned short int line_len = strlen(strarray[choice]);
-
-  // Set line to a random element in array
-  line = strncpy(line, strarray[choice], line_len);
-
-  // Strip newline char
-  unsigned short int x = strnlen(line, line_len);
-  x--;
-  if ((line[x] == '\n') || (line[x] == ' '))
-    line[x] = '\0';
-
-  // Strip a trailing space
-  x--;
-  if ((line[x] == '\n') || (line[x] == ' '))
-    line[x] = '\0';
-  
-  // Return the random line
-  return(line);
-}
-*/
 
 char * get_randline(char ** strarray, unsigned short int len)
 {
