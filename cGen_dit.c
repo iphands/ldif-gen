@@ -32,9 +32,16 @@ unsigned short int MAX_LINE_SIZE = 100;
 
 int main()
 {
-  //printf("hello world\n\n");
-  
-  // Start rand seed
+ 
+  char basedn[50] = "dc=usersys,dc=redhat,dc=com";
+
+  // How many iterations
+  unsigned int iter = 10;
+ 
+  // Set fast passwd
+  char fast_passwd = '1';
+
+  // Seed rand with time
   unsigned int seed = (unsigned int)time(NULL);
   srand(seed);
 
@@ -49,8 +56,9 @@ int main()
   char ** street_array = NULL;
   char ** imgs_array = NULL;
   char ** uname_array = NULL;
+  char ** domains_array = NULL;
 
-  unsigned short int fname_array_len, lname_array_len, city_array_len, state_array_len, shell_array_len, empt_array_len, street_array_len, imgs_array_len = 0;
+  unsigned short int fname_array_len, lname_array_len, city_array_len, state_array_len, shell_array_len, empt_array_len, street_array_len, imgs_array_len, domains_array_len = 0;
 
   unsigned int uname_array_len = 0;
 
@@ -62,16 +70,13 @@ int main()
   shell_array_len = load_array("./lists/shells", &shell_array);
   empt_array_len = load_array("./lists/employee_types", &empt_array);
   street_array_len = load_array("./lists/streets", &street_array);
-  imgs_array_len = load_dir_array("./faces/",  &imgs_array);  
+  imgs_array_len = load_dir_array("./faces/",  &imgs_array);
+  domains_array_len = load_array("./lists/domains", &domains_array);
 
   // Starting uid/gid
   unsigned int guid = 20000;
-
-  // How many iterations
-  unsigned int iter = 100;
-
   
-  ENTRY e, *ep;
+  ENTRY e;
   hcreate(iter);
 
   for (unsigned int i = 0; i < iter; i++)
@@ -83,7 +88,6 @@ int main()
       e.key = uname;
       e.data = (void*)i;
 
-      //if (dup_check(uname_array, uname_array_len, uname) == '0')
       if (hsearch(e, FIND) == NULL)
 	{
 	  if (hsearch(e, ENTER) == NULL)
@@ -118,11 +122,17 @@ int main()
       char * mobile_phnnum = make_phonenum();
       char * pager_num = make_phonenum();      
       char * img = get_randline(imgs_array, imgs_array_len);
-      //char * passwd = make_passwd();
-      char * passwd = cheat_make_passwd();
+      char * domain = get_randline(domains_array, domains_array_len);
+
+      char * passwd = NULL;
+      if (fast_passwd == '1')
+	passwd = cheat_make_passwd();
+      else
+	passwd = make_passwd();
+      
       char * sentence = make_sentence();
       
-      printf("dn: uid=%s,ou=People,dc=usersys,dc=redhat,dc=com\n", uname);
+      printf("dn: uid=%s,ou=People,%s\n", uname, basedn);
       printf("objectclass: person\n");
       printf("sn: %s\n", lrand);
       printf("userPassword: %s\n", passwd);
@@ -159,13 +169,13 @@ int main()
       printf("shadowInactive: 0\n");
       printf("cn: %s %s\n", frand, lrand);
       printf("uid: %s\n", uname);
-      printf("mail: %s@example.com\n", uname);
+      printf("mail: %s@%s\n", uname, domain);
       printf("homeDirectory: /home/%c/%s\n", uname[0], uname);
 
       printf("\n");
 
 
-      printf("dn: cn=%s,ou=Groups,dc=usersys,dc=redhat,dc=com\n", uname);
+      printf("dn: cn=%s,ou=Groups,%s\n", uname, basedn);
       printf("objectclass: posixGroup\n");
       printf("cn: %s\n", uname);
       printf("gidNumber: %d\n", guid);
@@ -192,20 +202,27 @@ int main()
       free(img);
       free(passwd);
       free(sentence);
+      free(domain);
     }
   hdestroy(); 
 
+  // Array for groups
   char ** groups_array = NULL;
+  
+  // Populate the groups array
   unsigned short int groups_array_len = load_array("./lists/groups", &groups_array);
-  char secg_array[groups_array_len][iter];
 
+  // Loop through each group
   for (unsigned short int i = 0; i < groups_array_len; i++)
     {
+      // Remove new line from the groups strings
       groups_array[i] = trim_newline(groups_array[i]);
-      printf("\ndn: cn=%s,ou=Groups,dc=usersys,dc=redhat,dc=com\n", groups_array[i]);
+
+      // Print the dn, objectclass, posixGroup, cn, and gidNumber
+      printf("\ndn: cn=%s,ou=Groups,%s\n", groups_array[i], basedn);
       printf("objectclass: posixGroup\ncn: admin\ngidNumber: %d\n", 2000 + i);
-      secg_array[i][0] = groups_array[i];
       
+      // Loop through the users
       for(unsigned int ci = 0; ci < iter; ci++)
 	{
 	  char bool = rand() % groups_array_len;
@@ -219,16 +236,17 @@ int main()
 
   printf("\n\n\n");
   // Cleanup
-  printf("fname size: %d\n", free_array(fname_array, fname_array_len));
-  printf("lname size: %d\n", free_array(lname_array, lname_array_len));
-  printf("city size: %d\n", free_array(city_array, city_array_len));
-  printf("state size: %d\n", free_array(state_array, state_array_len));
-  printf("shell size: %d\n", free_array(shell_array, shell_array_len));
-  printf("empt size: %d\n", free_array(empt_array, empt_array_len));
-  printf("street size: %d\n", free_array(street_array, street_array_len));
-  printf("imgs size: %d\n", free_array(imgs_array, imgs_array_len));
-  printf("uname size: %d\n", free_array(uname_array, uname_array_len));
-  printf("groups size: %d\n", free_array(groups_array, groups_array_len));
+  printf("# fname size: %d\n", free_array(fname_array, fname_array_len));
+  printf("# lname size: %d\n", free_array(lname_array, lname_array_len));
+  printf("# city size: %d\n", free_array(city_array, city_array_len));
+  printf("# state size: %d\n", free_array(state_array, state_array_len));
+  printf("# shell size: %d\n", free_array(shell_array, shell_array_len));
+  printf("# empt size: %d\n", free_array(empt_array, empt_array_len));
+  printf("# street size: %d\n", free_array(street_array, street_array_len));
+  printf("# imgs size: %d\n", free_array(imgs_array, imgs_array_len));
+  printf("# uname size: %d\n", free_array(uname_array, uname_array_len));
+  printf("# groups size: %d\n", free_array(groups_array, groups_array_len));
+  printf("# domains size: %d\n", free_array(domains_array, domains_array_len));
 
   return(EXIT_SUCCESS);
 }
@@ -298,7 +316,7 @@ char * make_sentence()
 
 char * cheat_make_passwd()
 {
-  // A function to speed up the program ~ 15 fold... Always returns the same 'redhat' hash!
+  // A function to speed up the program ~ 15 fold... Always returns the same 'redhat' salted hash!
   return(strndup("$1$7069465$zOTqT Fp8bw0Cc4A9j8AkG/", 34));
 }
 
