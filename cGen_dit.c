@@ -63,15 +63,13 @@ int main()
   street_array_len = load_array("./lists/streets", &street_array);
   imgs_array_len = load_dir_array("./faces/",  &imgs_array);  
 
+  // Starting uid/gid
   unsigned int guid = 20000;
 
+  // How many iterations
+  unsigned int iter = 1000;
 
-  // Test
   
-
-  // DEBUG
-  unsigned int iter = 100000;
-
   ENTRY e, *ep;
   hcreate(iter);
 
@@ -90,7 +88,7 @@ int main()
 	  ep = hsearch(e, ENTER);
 	  if (ep == NULL)
 	    {
-	      fprintf(stderr, "uname: %s entry failed\n", uname);
+	      fprintf(stderr, "Error writing uname (%s) to the hash table.\n", uname);
 	      exit(EXIT_FAILURE);
 	    }      	  
 	  uname_array = (char **)realloc(uname_array, (uname_array_len + 1) * sizeof(char *));
@@ -197,7 +195,7 @@ int main()
   printf("imgs size: %d\n", free_array(imgs_array, imgs_array_len));
   printf("uname size: %d\n", free_array(uname_array, uname_array_len));
 
-  return(0);
+  return(EXIT_SUCCESS);
 }
 
 
