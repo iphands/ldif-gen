@@ -165,7 +165,7 @@ int main()
       printf("\n");
 
 
-      printf("dn: uid=%s,ou=Groups,dc=usersys,dc=redhat,dc=com\n", uname);
+      printf("dn: cn=%s,ou=Groups,dc=usersys,dc=redhat,dc=com\n", uname);
       printf("objectclass: posixGroup\n");
       printf("cn: %s\n", uname);
       printf("gidNumber: %d\n", guid);
@@ -211,7 +211,7 @@ int main()
 	  char bool = rand() % groups_array_len;
 	  if (bool == 1)
 	    {
-	      printf("%s ", uname_array[ci]);
+	      printf("memberUid:%s\n", uname_array[ci]);
 	    }
 	}
       printf("\n");
