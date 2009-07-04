@@ -1,9 +1,9 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <linux/types.h>
@@ -26,6 +26,7 @@ char * make_passwd();
 char * cheat_make_passwd();
 char * make_sentence();
 char dup_check(char ** array, unsigned int len, char * string);
+char * trim_newline(char * string);
 
 unsigned short int MAX_LINE_SIZE = 100;
 
@@ -67,7 +68,7 @@ int main()
   unsigned int guid = 20000;
 
   // How many iterations
-  unsigned int iter = 1000;
+  unsigned int iter = 100;
 
   
   ENTRY e, *ep;
@@ -78,19 +79,19 @@ int main()
       char * frand = get_randline(fname_array, fname_array_len);
       char * lrand = get_randline(lname_array, lname_array_len);
       char * uname = (char*)make_username(frand, lrand);
-      
+
       e.key = uname;
-      e.data = (void *) i;
+      e.data = (void*)i;
 
       //if (dup_check(uname_array, uname_array_len, uname) == '0')
       if (hsearch(e, FIND) == NULL)
 	{
-	  ep = hsearch(e, ENTER);
-	  if (ep == NULL)
+	  if (hsearch(e, ENTER) == NULL)
 	    {
 	      fprintf(stderr, "Error writing uname (%s) to the hash table.\n", uname);
 	      exit(EXIT_FAILURE);
-	    }      	  
+	    }
+
 	  uname_array = (char **)realloc(uname_array, (uname_array_len + 1) * sizeof(char *));
 	  uname_array[uname_array_len++] = (char*)strdup(uname);
 	} 
@@ -163,7 +164,17 @@ int main()
 
       printf("\n");
 
-      // Cleanup... Being outside the loop makes this faster.
+
+      printf("dn: uid=%s,ou=Groups,dc=usersys,dc=redhat,dc=com\n", uname);
+      printf("objectclass: posixGroup\n");
+      printf("cn: %s\n", uname);
+      printf("gidNumber: %d\n", guid);
+      printf("memberUid: %s\n", uname);
+
+      printf("\n\n\n");
+
+
+      // Cleanup...
       free(phnnum);
       free(frand);
       free(lrand);
@@ -182,8 +193,31 @@ int main()
       free(passwd);
       free(sentence);
     }
+  hdestroy(); 
 
+  char ** groups_array = NULL;
+  unsigned short int groups_array_len = load_array("./lists/groups", &groups_array);
+  char secg_array[groups_array_len][iter];
 
+  for (unsigned short int i = 0; i < groups_array_len; i++)
+    {
+      groups_array[i] = trim_newline(groups_array[i]);
+      printf("\ndn: cn=%s,ou=Groups,dc=usersys,dc=redhat,dc=com\n", groups_array[i]);
+      printf("objectclass: posixGroup\ncn: admin\ngidNumber: %d\n", 2000 + i);
+      secg_array[i][0] = groups_array[i];
+      
+      for(unsigned int ci = 0; ci < iter; ci++)
+	{
+	  char bool = rand() % groups_array_len;
+	  if (bool == 1)
+	    {
+	      printf("%s ", uname_array[ci]);
+	    }
+	}
+      printf("\n");
+    }
+
+  printf("\n\n\n");
   // Cleanup
   printf("fname size: %d\n", free_array(fname_array, fname_array_len));
   printf("lname size: %d\n", free_array(lname_array, lname_array_len));
@@ -194,11 +228,10 @@ int main()
   printf("street size: %d\n", free_array(street_array, street_array_len));
   printf("imgs size: %d\n", free_array(imgs_array, imgs_array_len));
   printf("uname size: %d\n", free_array(uname_array, uname_array_len));
+  printf("groups size: %d\n", free_array(groups_array, groups_array_len));
 
   return(EXIT_SUCCESS);
 }
-
-
 
 char dup_check(char ** array, unsigned int len, char * string)
 {
@@ -484,12 +517,12 @@ unsigned short int load_array(char * filePath, char *** pstrarray)
     {
       strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char *));
       strarray[strcount++] = (char*)strdup(line);
+      //strarray[strcount++] = (char*)line;
     }
   
   
   // Close file, and return array
   fclose(file);
-
 
   strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char*));
   strarray[strcount] = NULL;  
@@ -513,21 +546,40 @@ char * get_randline(char ** strarray, unsigned short int len)
   const unsigned short int line_len = strlen(strarray[choice]);
 
   // Set line to a random element in array
-  char line[line_len + 1];
-  strncpy(line, strarray[choice], line_len + 1);
+  char * line = strarray[choice];
 
   // Strip newline char
+  line = trim_newline(line);
+
+  // Strip a trailing space
   unsigned short int x = strnlen(line, line_len);
   x--;
   if ((line[x] == '\n') || (line[x] == ' '))
     line[x] = '\0';
 
-  // Strip a trailing space
-  x--;
-  if ((line[x] == '\n') || (line[x] == ' '))
-    line[x] = '\0';
-
   // Return the random line
-  return(strndup(line, line_len + 1));
+  //return(line);
+  return(strndup(line, strnlen(line, line_len)));
 }
 
+char * trim_newline(char * string)
+{
+  // Get the length of string
+  unsigned int len = strnlen(string, 50) + 10;
+
+  // Loop through character array
+  for (unsigned int i = 0; i < len; i++)
+    {
+      // Once a newline is found, change it to \0 and break
+      if (string[i] == '\n')
+	{
+	  string[i] = '\0';
+	  len = i;
+	  break;
+	}
+    }
+  
+  // Return new string
+  //return(strndup(string, len));
+  return(string);
+}
