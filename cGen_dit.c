@@ -8,6 +8,7 @@
 #include <dirent.h>
 #include <linux/types.h>
 #include <unistd.h>
+#include <search.h>
 
 //#define MAX_LINE_SIZE 100;
 
@@ -22,13 +23,15 @@ char * make_postal();
 char * make_employee_num();
 unsigned short int load_dir_array(char * path, char *** pstrarray);
 char * make_passwd();
+char * cheat_make_passwd();
 char * make_sentence();
+char dup_check(char ** array, unsigned int len, char * string);
 
 unsigned short int MAX_LINE_SIZE = 100;
 
 int main()
 {
-  printf("hello world\n\n");
+  //printf("hello world\n\n");
   
   // Start rand seed
   unsigned int seed = (unsigned int)time(NULL);
@@ -44,8 +47,11 @@ int main()
   char ** empt_array = NULL;
   char ** street_array = NULL;
   char ** imgs_array = NULL;
+  char ** uname_array = NULL;
 
   unsigned short int fname_array_len, lname_array_len, city_array_len, state_array_len, shell_array_len, empt_array_len, street_array_len, imgs_array_len = 0;
+
+  unsigned int uname_array_len = 0;
 
   // Load files into arrays
   fname_array_len = load_array("./lists/first_names", &fname_array);
@@ -61,17 +67,48 @@ int main()
 
 
   // Test
+  
 
   // DEBUG
-  for (unsigned int i = 0; i < 1000000; i++)
-    {
-      //printf("it: %d\n", i);
-      
+  unsigned int iter = 100000;
+
+  ENTRY e, *ep;
+  hcreate(iter);
+
+  for (unsigned int i = 0; i < iter; i++)
+    {      
       char * frand = get_randline(fname_array, fname_array_len);
       char * lrand = get_randline(lname_array, lname_array_len);
+      char * uname = (char*)make_username(frand, lrand);
+      
+      e.key = uname;
+      e.data = (void *) i;
+
+      //if (dup_check(uname_array, uname_array_len, uname) == '0')
+      if (hsearch(e, FIND) == NULL)
+	{
+	  ep = hsearch(e, ENTER);
+	  if (ep == NULL)
+	    {
+	      fprintf(stderr, "uname: %s entry failed\n", uname);
+	      exit(EXIT_FAILURE);
+	    }      	  
+	  uname_array = (char **)realloc(uname_array, (uname_array_len + 1) * sizeof(char *));
+	  uname_array[uname_array_len++] = (char*)strdup(uname);
+	} 
+      else 
+	{
+	  fprintf(stderr, "Decected dupe: %s\n", uname);
+	  i--;
+	  
+	  free(frand);
+	  free(lrand);
+	  free(uname);
+	  continue;
+	}
+      
       char * crand = get_randline(city_array, city_array_len);
       char * srand = get_randline(state_array, state_array_len);
-      char * uname = (char*)make_username(frand, lrand);
       char * shell = get_randline(shell_array, shell_array_len);
       char * empt = get_randline(empt_array, empt_array_len);
       char * phnnum = make_phonenum();
@@ -83,12 +120,13 @@ int main()
       char * pager_num = make_phonenum();      
       char * img = get_randline(imgs_array, imgs_array_len);
       //char * passwd = make_passwd();
+      char * passwd = cheat_make_passwd();
       char * sentence = make_sentence();
-
-      printf("dn: uid=%s,ou=People,dc=example,dc=com\n", uname);
+      
+      printf("dn: uid=%s,ou=People,dc=usersys,dc=redhat,dc=com\n", uname);
       printf("objectclass: person\n");
       printf("sn: %s\n", lrand);
-      //printf("userPassword: %s\n", passwd);
+      printf("userPassword: %s\n", passwd);
       printf("telephoneNumber: %s\n", phnnum);
       printf("description: %s\n", sentence);
       printf("objectclass: organizationalPerson\n");
@@ -105,7 +143,7 @@ int main()
       printf("givenName: %s\n", frand);
       printf("homePhone: %s\n", phnnum);
       printf("homePostalAddress: %s $ %s, %s %s\n", street_addr, crand, srand, postal_code);
-      printf("jpegPhoto:< file:///home/iphands/prog/python/gen_dit/faces/%s\n", img);
+      printf("jpegPhoto:< file:///tmp/faces/%s\n", img);
       printf("mobile: %s\n", mobile_phnnum);
       printf("pager: %s\n", pager_num);
       printf("objectclass: posixAccount\n");
@@ -125,11 +163,9 @@ int main()
       printf("mail: %s@example.com\n", uname);
       printf("homeDirectory: /home/%c/%s\n", uname[0], uname);
 
+      printf("\n");
 
-
-      //printf("name: %s %s\nuid: %s\nphone: %s\nstate: %s\ncity: %s\n\n", frand, lrand, uname, phnnum, crand, srand);
-
-      // Cleanup
+      // Cleanup... Being outside the loop makes this faster.
       free(phnnum);
       free(frand);
       free(lrand);
@@ -145,11 +181,9 @@ int main()
       free(mobile_phnnum);
       free(pager_num);
       free(img);
-      //free(passwd);
+      free(passwd);
       free(sentence);
-      printf("\n");
     }
-
 
 
   // Cleanup
@@ -161,43 +195,99 @@ int main()
   printf("empt size: %d\n", free_array(empt_array, empt_array_len));
   printf("street size: %d\n", free_array(street_array, street_array_len));
   printf("imgs size: %d\n", free_array(imgs_array, imgs_array_len));
-
+  printf("uname size: %d\n", free_array(uname_array, uname_array_len));
 
   return(0);
 }
 
+
+
+char dup_check(char ** array, unsigned int len, char * string)
+{
+  char bool = '0';
+  unsigned short int slen = strlen(string);
+
+  for (unsigned int i = 0; i < len; i++)
+    {
+      if (string[0] == array[i][0])
+	{
+	  if (string[slen] == array[i][slen])
+	    {
+	      if (strcmp(array[i], string) == 0)
+		{	  
+		  bool = '1';       
+		  return bool;
+		}
+	    }
+	}
+    }
+  
+  return bool;
+}
+
 char * make_sentence()
 {
+  // Get a number of words
   unsigned short int count = (rand() % 10) + 10;
-  unsigned short int sent_len = (count + 2) * 13;
+
+  // Figure an aproximate size for the sentence (words + space) * max_word length
+  unsigned short int sent_len = (count + 1) * 13;
+
+  // Make a char array
   char sent[sent_len];
 
+  // Set the initial value of the sent
   strcpy(sent, "random_pseudo_sentence");
 
+  // Loop through the word count
   for (unsigned int x = 0; x < count; x++)
     {
+      // Generate a word length 2 - 12
       unsigned short int len = (rand() % 10) + 2;
+
+      // Make word storage
       char word[len];
+
+      // Run through each element and set it to a lowercase ascii value 97 - 122
       for (unsigned int i = 0; i < len; i++)
         {
-          word[i] = (char)((rand() % 25) + 97);
+          word[i] = (char)((rand() % ('z' - 'a')) + 'a');
         }
+
+      // Set the last char to \0
       word[len] = '\0';
 
+      // Concat the sentence and new word
       sprintf(sent, "%s %s", sent, word);
     }
 
+  // return
   return(strndup(sent, sent_len));
+}
+
+char * cheat_make_passwd()
+{
+  // A function to speed up the program ~ 15 fold... Always returns the same 'redhat' hash!
+  return(strndup("$1$7069465$zOTqT Fp8bw0Cc4A9j8AkG/", 34));
 }
 
 char * make_passwd()
 {
+  // Init strorage for the salt
   char salt[11];
+  
+  // Turn salt into a string with the MD5 sum type
   sprintf(salt, "$1$%d", rand() % 9999999 );
+  
+  // Use crypt to generate a salted MD5 hash
   char * passwd = crypt((char*)"redhat", salt);
+
+  // Get the length of the hash
   unsigned short int len = strnlen(passwd, 35);
 
   //printf("DEBUG: %s\n", passwd);
+
+  // Return the hash
   return(strndup(passwd, len));
 }
 
@@ -324,21 +414,31 @@ char * make_username(char * pfname, char * plname)
   for (unsigned short int i = 0; i < x; i++)
     {      
       char c = plname[i];
-      if (c == ' ')
+      if ((('a' < c) || (c > 'z')) || (('A' < c) || (c > 'Z')))
 	{
-	  lname[i] = '_';	  
+	  /*
+	  if (c == ' ')
+	    {
+	      lname[i] = '_';	  
+	      }	 
+	  */
+	  // else
+	  //{
+	  lname[i] = tolower(c);
+	  //}      
 	}
       else
 	{
-	  lname[i] = tolower(c);
-	}      
+	  lname[i] = '.';
+	}
     }
-
-  // Get a random number between 100 & 999
-  unsigned short int nums = (rand() % 899) + 100;
+  
+  // Get a random number between 1000 & 9999
+  unsigned short int nums = (rand() % 8999) + 1000;
 
   // Make a char array for the username
-  x = (x + sizeof(char) + (sizeof(unsigned short int) * 3)) + 1;
+  x = ((x + sizeof(char) - 1) + (sizeof(unsigned short int) * 4) - 1);
+  //printf("DEBUG: %d\n", x);
   char uname[x];
   
   // Build uname
