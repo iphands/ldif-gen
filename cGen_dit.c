@@ -96,8 +96,7 @@ int main(int argc, char *argv[])
 
 
   // Seed rand with time
-  //unsigned int seed = (unsigned int)time(NULL);
-  unsigned int seed = 1111;
+  unsigned int seed = (unsigned int)time(NULL);  
   srand(seed);
 
   // Initialize string storage, and pass to get_randline
