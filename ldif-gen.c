@@ -427,8 +427,8 @@ char * make_sentence()
 
 char * cheat_make_passwd()
 {
-  // A function to speed up the program ~ 15 fold... Always returns the same 'redhat' salted hash!
-  return(strndup("$1$FiEvfxd2$M2VDffWJOXHgaHiusqQxo1", 36));
+  // A function to speed up the program ~ 15 fold... Always returns the same ('password') salted hash!
+  return(strndup("$1$4825890$m2hxBzM2/TOkTLGmlWF6F0", 50));
 }
 
 char * make_passwd()
@@ -440,7 +440,7 @@ char * make_passwd()
   sprintf(salt, "$1$%d", rand() % 9999999 );
   
   // Use crypt to generate a salted MD5 hash
-  char * passwd = crypt((char*)"redhat", salt);
+  char * passwd = crypt((char*)"password", salt);
 
   // Get the length of the hash
   unsigned short int len = strnlen(passwd, 50);
