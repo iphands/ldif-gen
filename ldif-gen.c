@@ -30,7 +30,7 @@
 char * get_randline(char ** strarray, unsigned short int len);
 unsigned short int load_array(char * filePath, char *** strarray);
 unsigned short int free_array(char ** strarray, unsigned short int len);
-char * make_username(char * fname, char * lname);
+char * make_username(char * fname, char * lname, int * high_low);
 char * make_phonenum();
 char * make_street_addr(char * street, unsigned short int len);
 char * make_postal();
@@ -41,8 +41,40 @@ char * cheat_make_passwd();
 char * make_sentence();
 char dup_check(char ** array, unsigned int len, char * string);
 char * trim_newline(char * string);
+int * make_hl(int iter);
+
 
 unsigned short int MAX_LINE_SIZE = 100;
+
+
+int * make_hl(int iter)
+{
+  char string[MAX_LINE_SIZE];
+
+  sprintf(string, "%d", iter / 10);
+
+  unsigned short int len = strlen(string);
+  char str_high[MAX_LINE_SIZE];
+  for (unsigned int ci = 0; ci < len; ci++)
+    {
+      str_high[ci] = '9';
+    }
+  str_high[len+ 1] = '\0';
+
+  unsigned int high = atoi(str_high);
+  unsigned int low = (high + 1) / 10;
+  high= high -low;
+
+  int *high_low;
+  high_low = (int *)malloc(3 * sizeof(int));
+  high_low[0] = low;
+  high_low[1] = high;
+  high_low[2] = len;
+
+  //printf("debug: %d -- %d\n", high_low[1], high_low[0]);
+  
+  return(high_low);
+}
 
 int main(int argc, char *argv[])
 {
@@ -54,7 +86,7 @@ int main(int argc, char *argv[])
   // How many iterations
   unsigned int d_iter = 10000;
   unsigned int iter = d_iter;
- 
+
   // Set fast passwd
   char fast_passwd = '1';
 
@@ -94,7 +126,6 @@ int main(int argc, char *argv[])
         }
     }
 
-
   // Seed rand with time
   unsigned int seed = (unsigned int)time(NULL);  
   srand(seed);
@@ -126,6 +157,11 @@ int main(int argc, char *argv[])
   street_array_len = load_array("./lists/streets", &street_array);
   imgs_array_len = load_dir_array("./faces/",  &imgs_array);
   domains_array_len = load_array("./lists/domains", &domains_array);
+
+  // Make the high and low salt values;
+  int * high_low = make_hl(iter);
+  //printf("debug: %d %d %d\n", high_low[0], high_low[1], high_low[2]);
+  //return(0);
   
   ENTRY e;
   hcreate(iter);
@@ -145,7 +181,7 @@ int main(int argc, char *argv[])
     {      
       char * frand = get_randline(fname_array, fname_array_len);
       char * lrand = get_randline(lname_array, lname_array_len);
-      char * uname = (char*)make_username(frand, lrand);
+      char * uname = (char*)make_username(frand, lrand, high_low);
 
       e.key = uname;
       e.data = (void*)i;
@@ -266,6 +302,8 @@ int main(int argc, char *argv[])
       free(sentence);
       free(domain);
     }
+
+  free(high_low);
   hdestroy(); 
 
   // Array for groups
@@ -520,7 +558,7 @@ char * make_employee_num()
   return((char*)strndup(emplnum, 13));
 }
 
-char * make_username(char * pfname, char * plname)
+char * make_username(char * pfname, char * plname, int * high_low)
 {
   // Set fc to the lowercase first char in pfname
   char fc = tolower(pfname[0]); 
@@ -539,10 +577,10 @@ char * make_username(char * pfname, char * plname)
       if ((('a' < c) || (c > 'z')) || (('A' < c) || (c > 'Z')))
 	{
 	  /*
-	  if (c == ' ')
+	    if (c == ' ')
 	    {
-	      lname[i] = '_';	  
-	      }	 
+	    lname[i] = '_';	  
+	    }	 
 	  */
 	  // else
 	  //{
@@ -554,12 +592,13 @@ char * make_username(char * pfname, char * plname)
 	  lname[i] = '.';
 	}
     }
-  
+
   // Get a random number between 1000 & 9999
-  unsigned short int nums = (rand() % 8999) + 1000;
+  //unsigned short int nums = (rand() % 8999) + 1000;
+  unsigned int nums = (rand() % high_low[1]) + high_low[0];
 
   // Make a char array for the username
-  x = ((x + sizeof(char) - 1) + (sizeof(unsigned short int) * 4) - 1);
+  x = ((x + sizeof(char) - 1) + (sizeof(unsigned int) * high_low[2]) - 1);
   //printf("DEBUG: %d\n", x);
   char uname[x];
   
