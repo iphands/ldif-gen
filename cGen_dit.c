@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <search.h>
 
-//#define MAX_LINE_SIZE 100;
-
 //char * get_randline(char ** strarray, char * line, unsigned short int len);
 char * get_randline(char ** strarray, unsigned short int len);
 unsigned short int load_array(char * filePath, char *** strarray);
@@ -30,16 +28,56 @@ char * trim_newline(char * string);
 
 unsigned short int MAX_LINE_SIZE = 100;
 
-int main()
+int main(int argc, char *argv[])
 {
  
-  char basedn[50] = "dc=usersys,dc=redhat,dc=com";
+  // Default basedn
+  char d_basedn[50] = "dc=example,dc=com";
+  char basedn[50] = "dc=example,dc=com";
 
   // How many iterations
-  unsigned int iter = 10;
+  unsigned int d_iter = 10000;
+  unsigned int iter = d_iter;
  
   // Set fast passwd
   char fast_passwd = '1';
+
+  // Set create_ou
+  char create_ou = '0';
+
+  // Starting uid/gid
+  unsigned int guid = 20000;
+
+  int opt;
+  while ((opt = getopt(argc, argv, "b:i:rch")) != -1)
+    {
+      switch (opt) 
+        {
+	case 'b':
+	  strncpy(basedn, argv[optind - 1], 50);
+	  break;	    
+        case 'i':
+	  iter = atoi(optarg);
+          break;
+	case 'r':
+	  fast_passwd = '0';
+	  break;
+	case 'c':
+	  create_ou = '1';
+	  break;
+	case 'h':	  
+	default: /* '?' */
+          fprintf(stderr, "Usage: %s [-b basedn] [-i num_of_users] [-r] [-c] [-h]\n", argv[0]);
+	  fprintf(stderr, "Generate an ldif format list of users for use in a directory\n");
+	  fprintf(stderr, "  -b\t Specify a basedn (default is %s)\n", d_basedn);
+	  fprintf(stderr, "  -i\t Specify the number of iterations (default is %d)\n", d_iter);
+	  fprintf(stderr, "  -r\t Generate a new password hash for each user\n");
+	  fprintf(stderr, "  -c\t Create entries for ou=People and ou=Groups\n");
+	  fprintf(stderr, "  -h\t Shows this usage output\n");
+          exit(EXIT_FAILURE);
+        }
+    }
+
 
   // Seed rand with time
   unsigned int seed = (unsigned int)time(NULL);
@@ -72,12 +110,20 @@ int main()
   street_array_len = load_array("./lists/streets", &street_array);
   imgs_array_len = load_dir_array("./faces/",  &imgs_array);
   domains_array_len = load_array("./lists/domains", &domains_array);
-
-  // Starting uid/gid
-  unsigned int guid = 20000;
   
   ENTRY e;
   hcreate(iter);
+
+  if (create_ou == '1')
+    {
+      printf("dn: ou=People,%s\n", basedn);
+      printf("objectclass: organizationalUnit\n");
+      printf("ou: People\n\n");
+      
+      printf("dn: ou=Groups,%s\n", basedn);
+      printf("objectclass: organizationalUnit\n");
+      printf("ou: Groups\n\n");      
+    }
 
   for (unsigned int i = 0; i < iter; i++)
     {      
@@ -97,11 +143,11 @@ int main()
 	    }
 
 	  uname_array = (char **)realloc(uname_array, (uname_array_len + 1) * sizeof(char *));
-	  uname_array[uname_array_len++] = (char*)strdup(uname);
+	  uname_array[uname_array_len++] = (char*)strndup(uname, MAX_LINE_SIZE);
 	} 
       else 
 	{
-	  fprintf(stderr, "Decected dupe: %s\n", uname);
+	  fprintf(stderr, "# Decected dupe: %s\n", uname);
 	  i--;
 	  
 	  free(frand);
@@ -132,10 +178,11 @@ int main()
       
       char * sentence = make_sentence();
       
+      printf("#--- %s ---#\n", uname);
       printf("dn: uid=%s,ou=People,%s\n", uname, basedn);
       printf("objectclass: person\n");
       printf("sn: %s\n", lrand);
-      printf("userPassword: %s\n", passwd);
+      printf("userPassword: {crypt}%s\n", passwd);
       printf("telephoneNumber: %s\n", phnnum);
       printf("description: %s\n", sentence);
       printf("objectclass: organizationalPerson\n");
@@ -156,9 +203,8 @@ int main()
       printf("mobile: %s\n", mobile_phnnum);
       printf("pager: %s\n", pager_num);
       printf("objectclass: posixAccount\n");
-      printf("uidNumber: %d\n", guid);
-      printf("gidNumber: %d\n", guid);
-      guid++;
+      printf("uidNumber: %d\n", guid + i);
+      printf("gidNumber: %d\n", guid + i);
 
       printf("loginShell: %s\n", shell);
       printf("objectclass: shadowAccount\n");
@@ -178,7 +224,7 @@ int main()
       printf("dn: cn=%s,ou=Groups,%s\n", uname, basedn);
       printf("objectclass: posixGroup\n");
       printf("cn: %s\n", uname);
-      printf("gidNumber: %d\n", guid);
+      printf("gidNumber: %d\n", guid + i);
       printf("memberUid: %s\n", uname);
 
       printf("\n\n\n");
@@ -219,7 +265,8 @@ int main()
       groups_array[i] = trim_newline(groups_array[i]);
 
       // Print the dn, objectclass, posixGroup, cn, and gidNumber
-      printf("\ndn: cn=%s,ou=Groups,%s\n", groups_array[i], basedn);
+      printf("\n#--- %s ---#\n", groups_array[i]);
+      printf("dn: cn=%s,ou=Groups,%s\n", groups_array[i], basedn);
       printf("objectclass: posixGroup\ncn: admin\ngidNumber: %d\n", 2000 + i);
       
       // Loop through the users
@@ -253,16 +300,25 @@ int main()
 
 char dup_check(char ** array, unsigned int len, char * string)
 {
+  // Setup a char to be used as a boolean
   char bool = '0';
+
+  // Get the length of string
   unsigned short int slen = strlen(string);
 
+  // Loop through the array
   for (unsigned int i = 0; i < len; i++)
     {
+      // If the first chars do not match quit
       if (string[0] == array[i][0])
 	{
+	  
+	  // If the last the chars in slen do not match quit
 	  if (string[slen] == array[i][slen])
 	    {
-	      if (strcmp(array[i], string) == 0)
+	      
+	      // If the strings match completely return 1
+	      if (strncmp(array[i], string, slen + 1) == 0)
 		{	  
 		  bool = '1';       
 		  return bool;
@@ -271,6 +327,7 @@ char dup_check(char ** array, unsigned int len, char * string)
 	}
     }
   
+  // Return
   return bool;
 }
 
@@ -286,7 +343,7 @@ char * make_sentence()
   char sent[sent_len];
 
   // Set the initial value of the sent
-  strcpy(sent, "random_pseudo_sentence");
+  strncpy(sent, "random_pseudo_sentence", sent_len + 1);
 
   // Loop through the word count
   for (unsigned int x = 0; x < count; x++)
@@ -317,7 +374,7 @@ char * make_sentence()
 char * cheat_make_passwd()
 {
   // A function to speed up the program ~ 15 fold... Always returns the same 'redhat' salted hash!
-  return(strndup("$1$7069465$zOTqT Fp8bw0Cc4A9j8AkG/", 34));
+  return(strndup("$1$FiEvfxd2$M2VDffWJOXHgaHiusqQxo1", 36));
 }
 
 char * make_passwd()
@@ -332,7 +389,7 @@ char * make_passwd()
   char * passwd = crypt((char*)"redhat", salt);
 
   // Get the length of the hash
-  unsigned short int len = strnlen(passwd, 35);
+  unsigned short int len = strnlen(passwd, 50);
 
   //printf("DEBUG: %s\n", passwd);
 
@@ -367,11 +424,11 @@ unsigned short int load_dir_array(char * dirPath, char *** pstrarray)
   for (pDirEnt = readdir((DIR*)dir); pDirEnt; pDirEnt = readdir((DIR*)dir))
     {
       string = (char*)pDirEnt->d_name;
-      if(!strcmp(string, ".") || !strcmp(string, ".."))
+      if(!strncmp(string, ".", MAX_LINE_SIZE) || !strncmp(string, "..", MAX_LINE_SIZE))
 	continue;
       
       strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char *));
-      strarray[strcount++] = (char*)strdup(string);
+      strarray[strcount++] = (char*)strndup(string, MAX_LINE_SIZE);
     }
 
   // Close file, and return array
@@ -534,7 +591,7 @@ unsigned short int load_array(char * filePath, char *** pstrarray)
   while((fgets(line, MAX_LINE_SIZE, file)) != NULL)
     {
       strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char *));
-      strarray[strcount++] = (char*)strdup(line);
+      strarray[strcount++] = (char*)strndup(line, MAX_LINE_SIZE);
       //strarray[strcount++] = (char*)line;
     }
   
@@ -561,7 +618,7 @@ char * get_randline(char ** strarray, unsigned short int len)
   unsigned int choice = (rand() % (i - 1));
 
   // Get size of line
-  const unsigned short int line_len = strlen(strarray[choice]);
+  const unsigned short int line_len = strnlen(strarray[choice], MAX_LINE_SIZE);
 
   // Set line to a random element in array
   char * line = strarray[choice];
