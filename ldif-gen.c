@@ -228,7 +228,8 @@ int main(int argc, char *argv[])
       else
 	passwd = make_passwd();
       
-      char * sentence = make_sentence();
+      //char * sentence = make_sentence();
+      char * sentence = "foo bar";
       
       printf("#--- %s ---#\n", uname);
       printf("dn: uid=%s,ou=People,%s\n", uname, basedn);
@@ -262,7 +263,7 @@ int main(int argc, char *argv[])
       printf("objectclass: shadowAccount\n");
       printf("shadowLastChange: 14422\n");
       printf("shadowMin: 0\n");
-      printf("shadowMax: 90\n");
+      printf("shadowMax: 1000000\n");
       printf("shadowWarning: 14\n");
       printf("shadowInactive: 0\n");
       printf("cn: %s %s\n", frand, lrand);
@@ -299,7 +300,7 @@ int main(int argc, char *argv[])
       free(pager_num);
       free(img);
       free(passwd);
-      free(sentence);
+      //free(sentence);
       free(domain);
     }
 
@@ -695,10 +696,11 @@ char * get_randline(char ** strarray, unsigned short int len)
 char * trim_newline(char * string)
 {
   // Get the length of string
-  unsigned int len = strnlen(string, 50) + 10;
+  unsigned int len = strnlen(string, 50);
 
   // Loop through character array
-  for (unsigned int i = 0; i < len; i++)
+  //for (unsigned int i = 0; i < len; i++)
+  for (unsigned int i = len - 1; i != 0; i--)
     {
       // Once a newline is found, change it to \0 and break
       if (string[i] == '\n')

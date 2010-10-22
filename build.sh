@@ -29,6 +29,11 @@ fi
 if [ 1 -eq 1 ]
 then
     echo "64bit debug:"
+    gcc -lcrypt -m64 -pg -Wall -std=gnu99 -o bin/${PROG_NAME}.gp-64 ${PROG_NAME}.c -march=native
+    RET=`expr $RET + $?`
+    echo -e "Done $RET\n\n\n"
+
+    echo "64bit debug:"
     gcc -lcrypt -m64 -g -ggdb -Wall -std=gnu99 -o bin/${PROG_NAME}.debug-64 ${PROG_NAME}.c -march=native
     RET=`expr $RET + $?`
     echo -e "Done $RET\n\n\n"
