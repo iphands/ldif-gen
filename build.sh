@@ -2,6 +2,8 @@
 
 PROG_NAME="ldif-gen"
 
+mkdir bin
+
 if [ 1 -ne 1 ]
 then
     echo "32bit debug:"
