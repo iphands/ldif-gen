@@ -3,7 +3,7 @@
 ** it under the terms of the GNU General Public License as published by
 ** the Free Software Foundation; either version 2 of the License, or
 ** (at your option) any later version.
-** 
+**
 ** This program is distributed in the hope that it will be useful,
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
 ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -43,6 +43,7 @@ char dup_check(char ** array, unsigned int len, char * string);
 char * trim_newline(char * string);
 int * make_hl(int iter);
 
+unsigned short int include_photo = 0;
 
 unsigned short int MAX_LINE_SIZE = 100;
 
@@ -72,13 +73,13 @@ int * make_hl(int iter)
   high_low[2] = len;
 
   //printf("debug: %d -- %d\n", high_low[1], high_low[0]);
-  
+
   return(high_low);
 }
 
 int main(int argc, char *argv[])
 {
- 
+
   // Default basedn
   char d_basedn[50] = "dc=example,dc=com";
   char basedn[50] = "dc=example,dc=com";
@@ -97,13 +98,13 @@ int main(int argc, char *argv[])
   unsigned int guid = 20000;
 
   int opt;
-  while ((opt = getopt(argc, argv, "b:i:rch")) != -1)
+  while ((opt = getopt(argc, argv, "b:i:rcph")) != -1)
     {
-      switch (opt) 
+      switch (opt)
         {
 	case 'b':
 	  strncpy(basedn, argv[optind - 1], 50);
-	  break;	    
+	  break;
         case 'i':
 	  iter = atoi(optarg);
           break;
@@ -113,7 +114,10 @@ int main(int argc, char *argv[])
 	case 'c':
 	  create_ou = '1';
 	  break;
-	case 'h':	  
+	case 'p':
+	  include_photo = 1;
+	  break;
+	case 'h':
 	default: /* '?' */
           fprintf(stderr, "Usage: %s [-b basedn] [-i num_of_users] [-r] [-c] [-h]\n", argv[0]);
 	  fprintf(stderr, "Generate an ldif format list of users for use in a directory\n");
@@ -121,13 +125,14 @@ int main(int argc, char *argv[])
 	  fprintf(stderr, "  -i\t Specify the number of iterations (default is %d)\n", d_iter);
 	  fprintf(stderr, "  -r\t Generate a new password hash for each user\n");
 	  fprintf(stderr, "  -c\t Create entries for ou=People and ou=Groups\n");
+	  fprintf(stderr, "  -p\t include user photo... /tmp/faces must exist for this to work!\n");
 	  fprintf(stderr, "  -h\t Shows this usage output\n");
           exit(EXIT_FAILURE);
         }
     }
 
   // Seed rand with time
-  unsigned int seed = (unsigned int)time(NULL);  
+  unsigned int seed = (unsigned int)time(NULL);
   srand(seed);
 
   // Initialize string storage, and pass to get_randline
@@ -162,7 +167,7 @@ int main(int argc, char *argv[])
   int * high_low = make_hl(iter);
   //printf("debug: %d %d %d\n", high_low[0], high_low[1], high_low[2]);
   //return(0);
-  
+
   ENTRY e;
   hcreate(iter);
 
@@ -171,14 +176,14 @@ int main(int argc, char *argv[])
       printf("dn: ou=People,%s\n", basedn);
       printf("objectclass: organizationalUnit\n");
       printf("ou: People\n\n");
-      
+
       printf("dn: ou=Groups,%s\n", basedn);
       printf("objectclass: organizationalUnit\n");
-      printf("ou: Groups\n\n");      
+      printf("ou: Groups\n\n");
     }
 
   for (unsigned int i = 0; i < iter; i++)
-    {      
+    {
       char * frand = get_randline(fname_array, fname_array_len);
       char * lrand = get_randline(lname_array, lname_array_len);
       char * uname = (char*)make_username(frand, lrand, high_low);
@@ -196,41 +201,42 @@ int main(int argc, char *argv[])
 
 	  uname_array = (char **)realloc(uname_array, (uname_array_len + 1) * sizeof(char *));
 	  uname_array[uname_array_len++] = (char*)strndup(uname, MAX_LINE_SIZE);
-	} 
-      else 
+	}
+      else
 	{
 	  fprintf(stderr, "# Decected dupe: %s\n", uname);
 	  i--;
-	  
+
 	  free(frand);
 	  free(lrand);
 	  free(uname);
 	  continue;
 	}
-      
+
       char * crand = get_randline(city_array, city_array_len);
       char * srand = get_randline(state_array, state_array_len);
       char * shell = get_randline(shell_array, shell_array_len);
       char * empt = get_randline(empt_array, empt_array_len);
       char * phnnum = make_phonenum();
       char * street_name = get_randline(street_array, street_array_len);
-      char * street_addr = make_street_addr(street_name, (strnlen(street_name, 100) + 6 + 1));            
+      char * street_addr = make_street_addr(street_name, (strnlen(street_name, 100) + 6 + 1));
       char * postal_code = make_postal();
       char * empl_num = make_employee_num();
       char * mobile_phnnum = make_phonenum();
-      char * pager_num = make_phonenum();      
+      char * pager_num = make_phonenum();
       char * img = get_randline(imgs_array, imgs_array_len);
       char * domain = get_randline(domains_array, domains_array_len);
 
       char * passwd = NULL;
-      if (fast_passwd == '1')
-	passwd = cheat_make_passwd();
-      else
-	passwd = make_passwd();
-      
+      if (fast_passwd == '1') {
+		passwd = cheat_make_passwd();
+	  } else {
+		passwd = make_passwd();
+	  }
+
       //char * sentence = make_sentence();
       char * sentence = "foo bar";
-      
+
       printf("#--- %s ---#\n", uname);
       printf("dn: uid=%s,ou=People,%s\n", uname, basedn);
       printf("objectclass: person\n");
@@ -252,7 +258,11 @@ int main(int argc, char *argv[])
       printf("givenName: %s\n", frand);
       printf("homePhone: %s\n", phnnum);
       printf("homePostalAddress: %s $ %s, %s %s\n", street_addr, crand, srand, postal_code);
-      printf("jpegPhoto:< file:///tmp/faces/%s\n", img);
+
+	  if (include_photo) {
+		printf("jpegPhoto:< file:///tmp/faces/%s\n", img);
+	  }
+
       printf("mobile: %s\n", mobile_phnnum);
       printf("pager: %s\n", pager_num);
       printf("objectclass: posixAccount\n");
@@ -305,11 +315,11 @@ int main(int argc, char *argv[])
     }
 
   free(high_low);
-  hdestroy(); 
+  hdestroy();
 
   // Array for groups
   char ** groups_array = NULL;
-  
+
   // Populate the groups array
   unsigned short int groups_array_len = load_array("./lists/groups", &groups_array);
 
@@ -323,7 +333,7 @@ int main(int argc, char *argv[])
       printf("\n#--- %s ---#\n", groups_array[i]);
       printf("dn: cn=%s,ou=Groups,%s\n", groups_array[i], basedn);
       printf("objectclass: posixGroup\ncn: admin\ngidNumber: %d\n", 2000 + i);
-      
+
       // Loop through the users
       for(unsigned int ci = 0; ci < iter; ci++)
 	{
@@ -367,21 +377,21 @@ char dup_check(char ** array, unsigned int len, char * string)
       // If the first chars do not match quit
       if (string[0] == array[i][0])
 	{
-	  
+
 	  // If the last the chars in slen do not match quit
 	  if (string[slen] == array[i][slen])
 	    {
-	      
+
 	      // If the strings match completely return 1
 	      if (strncmp(array[i], string, slen + 1) == 0)
-		{	  
-		  bool = '1';       
+		{
+		  bool = '1';
 		  return bool;
 		}
 	    }
 	}
     }
-  
+
   // Return
   return bool;
 }
@@ -436,10 +446,10 @@ char * make_passwd()
 {
   // Init strorage for the salt
   char salt[11];
-  
+
   // Turn salt into a string with the MD5 sum type
   sprintf(salt, "$1$%d", rand() % 9999999 );
-  
+
   // Use crypt to generate a salted MD5 hash
   char * passwd = crypt((char*)"password", salt);
 
@@ -459,13 +469,13 @@ unsigned short int load_dir_array(char * dirPath, char *** pstrarray)
 
   // Open a FD on the supplied path
   const DIR * dir = opendir(dirPath);
-  
+
   // If the dir cant be opened return
   if (dir == NULL)
     {
       return(0);
     }
-  
+
   // Local storage for files found
   char * string;
 
@@ -481,20 +491,20 @@ unsigned short int load_dir_array(char * dirPath, char *** pstrarray)
       string = (char*)pDirEnt->d_name;
       if(!strncmp(string, ".", MAX_LINE_SIZE) || !strncmp(string, "..", MAX_LINE_SIZE))
 	continue;
-      
+
       strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char *));
       strarray[strcount++] = (char*)strndup(string, MAX_LINE_SIZE);
     }
 
   // Close file, and return array
   closedir(dir);
-  
+
   strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char*));
-  strarray[strcount] = NULL;  
-  
+  strarray[strcount] = NULL;
+
   // Set the passed in array to the temporary storage address
-  *pstrarray = strarray;  
-  
+  *pstrarray = strarray;
+
   return(strcount);
 }
 
@@ -511,18 +521,18 @@ char * make_postal()
 
   // Build string
   snprintf(postal_code, 11, "%d-%d", (rand() % 89999) + 10000, (rand() % 8999) + 1000);
- 
+
   // Return formatted postal code
   return((char*)strndup(postal_code, 11));
 }
 
 char * make_street_addr(char * street, unsigned short int len)
 {
-  /* 
-     Example: 
+  /*
+     Example:
      street: 6745 Porter Alley
   */
-  
+
   //printf("\nDEBUG: %d -- %s\n", len, street);
 
   // Make storage
@@ -530,7 +540,7 @@ char * make_street_addr(char * street, unsigned short int len)
 
   // Build string
   snprintf(addr, (len + 6), "%d %s", (rand() % 18000), street);
-  
+
   // Return formatted street address
   return((char*)strndup(addr, len));
 }
@@ -562,31 +572,31 @@ char * make_employee_num()
 char * make_username(char * pfname, char * plname, int * high_low)
 {
   // Set fc to the lowercase first char in pfname
-  char fc = tolower(pfname[0]); 
+  char fc = tolower(pfname[0]);
 
   // Make a local lname
   char * lname = NULL;
-  
+
   // Get the length of plname and malloc space for it
   unsigned short int x = strnlen(plname, 25);
   lname = calloc(x + 1, sizeof(char));
 
   // Run through plname and make lname, but lowercase
   for (unsigned short int i = 0; i < x; i++)
-    {      
+    {
       char c = plname[i];
       if ((('a' < c) || (c > 'z')) || (('A' < c) || (c > 'Z')))
 	{
 	  /*
 	    if (c == ' ')
 	    {
-	    lname[i] = '_';	  
-	    }	 
+	    lname[i] = '_';
+	    }
 	  */
 	  // else
 	  //{
 	  lname[i] = tolower(c);
-	  //}      
+	  //}
 	}
       else
 	{
@@ -602,7 +612,7 @@ char * make_username(char * pfname, char * plname, int * high_low)
   x = ((x + sizeof(char) - 1) + (sizeof(unsigned int) * high_low[2]) - 1);
   //printf("DEBUG: %d\n", x);
   char uname[x];
-  
+
   // Build uname
   snprintf(uname, x, "%c%s%d", fc, lname, nums);
 
@@ -626,7 +636,7 @@ unsigned short int free_array(char ** strarray, unsigned short int len)
 }
 
 unsigned short int load_array(char * filePath, char *** pstrarray)
-{ 
+{
   // Declare temporary pointer storage for the passed in strarray
   char ** strarray = *pstrarray;
 
@@ -650,13 +660,13 @@ unsigned short int load_array(char * filePath, char *** pstrarray)
       strarray[strcount++] = (char*)strndup(line, MAX_LINE_SIZE);
       //strarray[strcount++] = (char*)line;
     }
-  
-  
+
+
   // Close file, and return array
   fclose(file);
 
   strarray = (char **)realloc(strarray, (strcount + 1) * sizeof(char*));
-  strarray[strcount] = NULL;  
+  strarray[strcount] = NULL;
 
   // Set the passed in array to the temporary storage address
   *pstrarray = strarray;
@@ -710,7 +720,7 @@ char * trim_newline(char * string)
 	  break;
 	}
     }
-  
+
   // Return new string
   //return(strndup(string, len));
   return(string);
